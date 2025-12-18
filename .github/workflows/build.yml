@@ -10,31 +10,29 @@ jobs:
     steps:
       - name: Download Miniforge3
         run: |
-          Invoke-WebRequest -Uri "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe" -OutFile "miniforge.exe"
+          Invoke-WebRequest -Uri "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe" -OutFile "C:\miniforge.exe"
 
-      - name: Install Miniforge3 (portable)
+      - name: Install Miniforge3
+        shell: cmd
         run: |
-          $installPath = "$env:GITHUB_WORKSPACE\miniforge3"
-          Start-Process -FilePath ".\miniforge.exe" -ArgumentList "/S", "/D=$installPath" -Wait -NoNewWindow
-          Write-Host "Installed to: $installPath"
-          Get-ChildItem $installPath -ErrorAction SilentlyContinue | Select-Object -First 10
+          C:\miniforge.exe /S /D=C:\miniforge3
+          timeout /t 30
 
-      - name: Verify installation
+      - name: Verify and setup PATH
         run: |
-          $mambaPath = "$env:GITHUB_WORKSPACE\miniforge3\Scripts\mamba.exe"
-          if (Test-Path $mambaPath) {
-            Write-Host "mamba.exe found at: $mambaPath"
+          if (Test-Path "C:\miniforge3\Scripts\mamba.exe") {
+            Write-Host "SUCCESS: mamba.exe found"
+            Get-ChildItem "C:\miniforge3" | Select-Object Name
           } else {
-            Write-Host "mamba.exe NOT found, checking alternative locations..."
-            Get-ChildItem "$env:GITHUB_WORKSPACE" -Recurse -Filter "mamba.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
-            Get-ChildItem "$env:USERPROFILE" -Recurse -Filter "mamba.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+            Write-Host "ERROR: Installation failed"
+            exit 1
           }
 
-      - name: Install Python 3.11 via Mamba
+      - name: Install Python 3.11
+        shell: cmd
         run: |
-          $env:PATH = "$env:GITHUB_WORKSPACE\miniforge3;$env:GITHUB_WORKSPACE\miniforge3\Scripts;$env:GITHUB_WORKSPACE\miniforge3\Library\bin;$env:PATH"
-          mamba install -n base python=3.11 -y
-          mamba clean --all -y
+          C:\miniforge3\Scripts\mamba.exe install -n base python=3.11 -y
+          C:\miniforge3\Scripts\mamba.exe clean --all -y
 
       - name: Create activation script
         shell: powershell
@@ -50,15 +48,15 @@ echo Mamba: %CONDA_PREFIX%\Scripts\mamba.exe
 echo.
 cmd /k
 "@
-          $content | Out-File -FilePath "activate.bat" -Encoding ascii -NoNewline
+          Set-Content -Path "C:\activate.bat" -Value $content -Encoding ASCII
 
       - name: Zip environment
         run: |
-          Compress-Archive -Path "miniforge3", "activate.bat" -DestinationPath "mampy3-portable.zip"
+          Compress-Archive -Path "C:\miniforge3", "C:\activate.bat" -DestinationPath "C:\mampy3-portable.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: mampy3-portable
-          path: mampy3-portable.zip
+          path: C:\mampy3-portable.zip
           retention-days: 30

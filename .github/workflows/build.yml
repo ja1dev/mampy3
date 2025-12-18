@@ -1,0 +1,49 @@
+name: Build Portable Python Environment
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Download Miniforge3
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe" -OutFile "miniforge.exe"
+
+      - name: Install Miniforge3 (portable)
+        run: |
+          Start-Process -FilePath ".\miniforge.exe" -ArgumentList "/S", "/D=${{ github.workspace }}\miniforge3" -Wait
+
+      - name: Install Python 3.11 via Mamba
+        run: |
+          & "${{ github.workspace }}\miniforge3\Scripts\mamba.exe" install -n base python=3.11 -y
+          & "${{ github.workspace }}\miniforge3\Scripts\mamba.exe" clean --all -y
+
+      - name: Create activation script
+        shell: powershell
+        run: |
+          $content = @"
+          @echo off
+          set CONDA_PREFIX=%~dp0miniforge3
+          set PATH=%CONDA_PREFIX%;%CONDA_PREFIX%\Scripts;%CONDA_PREFIX%\Library\bin;%PATH%
+          echo.
+          echo Miniforge3 environment activated!
+          echo Python: %CONDA_PREFIX%\python.exe
+          echo Mamba: %CONDA_PREFIX%\Scripts\mamba.exe
+          echo.
+          cmd /k
+          "@
+          $content | Out-File -FilePath "activate.bat" -Encoding ascii
+
+      - name: Zip environment
+        run: |
+          Compress-Archive -Path "miniforge3", "activate.bat" -DestinationPath "mampy3-portable.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mampy3-portable
+          path: mampy3-portable.zip
+          retention-days: 30

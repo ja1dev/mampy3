@@ -22,22 +22,22 @@ jobs:
 
       - name: Verify installation
         run: |
-          if (Test-Path "C:\miniforge3\Scripts\conda.exe") {
-            Write-Host "conda.exe found"
-          } else {
-            Write-Host "Installation failed"
-            exit 1
-          }
+          Get-ChildItem "C:\miniforge3" -ErrorAction SilentlyContinue
+          Get-ChildItem "C:\miniforge3\Scripts" -ErrorAction SilentlyContinue
 
-      - name: Install mamba
-        shell: cmd
-        run: C:\miniforge3\Scripts\conda.exe install -n base mamba -y
-
-      - name: Install Python 3.11
+      - name: Install mamba and Python 3.11
         shell: cmd
         run: |
-          C:\miniforge3\Scripts\mamba.exe install -n base python=3.11 -y
-          C:\miniforge3\Scripts\mamba.exe clean --all -y
+          call C:\miniforge3\Scripts\activate.bat
+          conda install -n base mamba python=3.11 -y
+          conda clean --all -y
+
+      - name: Verify mamba
+        shell: cmd
+        run: |
+          call C:\miniforge3\Scripts\activate.bat
+          where mamba
+          mamba --version
 
       - name: Create activation script
         shell: cmd

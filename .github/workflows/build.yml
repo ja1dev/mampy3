@@ -18,17 +18,21 @@ jobs:
           C:\miniforge.exe /S /D=C:\miniforge3
           timeout /t 30
 
-      - name: Verify and setup PATH
+      - name: Verify Miniforge3 installation
         run: |
-          if (Test-Path "C:\miniforge3\Scripts\mamba.exe") {
-            Write-Host "SUCCESS: mamba.exe found"
-            Get-ChildItem "C:\miniforge3" | Select-Object Name
+          if (Test-Path "C:\miniforge3\Scripts\conda.exe") {
+            Write-Host "SUCCESS: conda.exe found"
           } else {
-            Write-Host "ERROR: Installation failed"
+            Write-Host "ERROR: Miniforge3 installation failed"
             exit 1
           }
 
-      - name: Install Python 3.11
+      - name: Install mamba in base environment
+        shell: cmd
+        run: |
+          C:\miniforge3\Scripts\conda.exe install -n base mamba -y
+
+      - name: Install Python 3.11 via mamba
         shell: cmd
         run: |
           C:\miniforge3\Scripts\mamba.exe install -n base python=3.11 -y

@@ -14,28 +14,43 @@ jobs:
 
       - name: Install Miniforge3 (portable)
         run: |
-          Start-Process -FilePath ".\miniforge.exe" -ArgumentList "/S", "/D=${{ github.workspace }}\miniforge3" -Wait
+          $installPath = "$env:GITHUB_WORKSPACE\miniforge3"
+          Start-Process -FilePath ".\miniforge.exe" -ArgumentList "/S", "/D=$installPath" -Wait -NoNewWindow
+          Write-Host "Installed to: $installPath"
+          Get-ChildItem $installPath -ErrorAction SilentlyContinue | Select-Object -First 10
+
+      - name: Verify installation
+        run: |
+          $mambaPath = "$env:GITHUB_WORKSPACE\miniforge3\Scripts\mamba.exe"
+          if (Test-Path $mambaPath) {
+            Write-Host "mamba.exe found at: $mambaPath"
+          } else {
+            Write-Host "mamba.exe NOT found, checking alternative locations..."
+            Get-ChildItem "$env:GITHUB_WORKSPACE" -Recurse -Filter "mamba.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+            Get-ChildItem "$env:USERPROFILE" -Recurse -Filter "mamba.exe" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+          }
 
       - name: Install Python 3.11 via Mamba
         run: |
-          & "${{ github.workspace }}\miniforge3\Scripts\mamba.exe" install -n base python=3.11 -y
-          & "${{ github.workspace }}\miniforge3\Scripts\mamba.exe" clean --all -y
+          $env:PATH = "$env:GITHUB_WORKSPACE\miniforge3;$env:GITHUB_WORKSPACE\miniforge3\Scripts;$env:GITHUB_WORKSPACE\miniforge3\Library\bin;$env:PATH"
+          mamba install -n base python=3.11 -y
+          mamba clean --all -y
 
       - name: Create activation script
         shell: powershell
         run: |
           $content = @"
-          @echo off
-          set CONDA_PREFIX=%~dp0miniforge3
-          set PATH=%CONDA_PREFIX%;%CONDA_PREFIX%\Scripts;%CONDA_PREFIX%\Library\bin;%PATH%
-          echo.
-          echo Miniforge3 environment activated!
-          echo Python: %CONDA_PREFIX%\python.exe
-          echo Mamba: %CONDA_PREFIX%\Scripts\mamba.exe
-          echo.
-          cmd /k
-          "@
-          $content | Out-File -FilePath "activate.bat" -Encoding ascii
+@echo off
+set CONDA_PREFIX=%~dp0miniforge3
+set PATH=%CONDA_PREFIX%;%CONDA_PREFIX%\Scripts;%CONDA_PREFIX%\Library\bin;%PATH%
+echo.
+echo Miniforge3 environment activated!
+echo Python: %CONDA_PREFIX%\python.exe
+echo Mamba: %CONDA_PREFIX%\Scripts\mamba.exe
+echo.
+cmd /k
+"@
+          $content | Out-File -FilePath "activate.bat" -Encoding ascii -NoNewline
 
       - name: Zip environment
         run: |

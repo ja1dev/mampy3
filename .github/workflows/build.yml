@@ -11,54 +11,45 @@ jobs:
 
     steps:
       - name: Download Miniforge3
-        run: |
-          Invoke-WebRequest -Uri "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe" -OutFile "C:\miniforge.exe"
+        run: Invoke-WebRequest -Uri "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe" -OutFile "C:\miniforge.exe"
 
       - name: Install Miniforge3
         shell: cmd
-        run: |
-          C:\miniforge.exe /S /D=C:\miniforge3
-          timeout /t 30
+        run: C:\miniforge.exe /S /D=C:\miniforge3
 
-      - name: Verify Miniforge3 installation
+      - name: Wait for installation
+        run: Start-Sleep -Seconds 30
+
+      - name: Verify installation
         run: |
           if (Test-Path "C:\miniforge3\Scripts\conda.exe") {
-            Write-Host "SUCCESS: conda.exe found"
+            Write-Host "conda.exe found"
           } else {
-            Write-Host "ERROR: Miniforge3 installation failed"
+            Write-Host "Installation failed"
             exit 1
           }
 
-      - name: Install mamba in base environment
+      - name: Install mamba
         shell: cmd
-        run: |
-          C:\miniforge3\Scripts\conda.exe install -n base mamba -y
+        run: C:\miniforge3\Scripts\conda.exe install -n base mamba -y
 
-      - name: Install Python 3.11 via mamba
+      - name: Install Python 3.11
         shell: cmd
         run: |
           C:\miniforge3\Scripts\mamba.exe install -n base python=3.11 -y
           C:\miniforge3\Scripts\mamba.exe clean --all -y
 
       - name: Create activation script
-        shell: powershell
+        shell: cmd
         run: |
-          $content = @"
-@echo off
-set CONDA_PREFIX=%~dp0miniforge3
-set PATH=%CONDA_PREFIX%;%CONDA_PREFIX%\Scripts;%CONDA_PREFIX%\Library\bin;%PATH%
-echo.
-echo Miniforge3 environment activated!
-echo Python: %CONDA_PREFIX%\python.exe
-echo Mamba: %CONDA_PREFIX%\Scripts\mamba.exe
-echo.
-cmd /k
-"@
-          Set-Content -Path "C:\activate.bat" -Value $content -Encoding ASCII
+          echo @echo off > C:\activate.bat
+          echo set CONDA_PREFIX=%%~dp0miniforge3 >> C:\activate.bat
+          echo set PATH=%%CONDA_PREFIX%%;%%CONDA_PREFIX%%\Scripts;%%CONDA_PREFIX%%\Library\bin;%%PATH%% >> C:\activate.bat
+          echo echo Miniforge3 activated >> C:\activate.bat
+          echo cmd /k >> C:\activate.bat
 
       - name: Zip environment
-        run: |
-          Compress-Archive -Path "C:\miniforge3", "C:\activate.bat" -DestinationPath "C:\mampy3-portable.zip"
+        run: Compress-Archive -Path "C:\miniforge3", "C:\activate.bat" -DestinationPath "C:\mampy3-portable.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
